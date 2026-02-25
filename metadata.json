@@ -1,0 +1,5 @@
+{
+  "name": "Suivi Chantier Câblage Hôpital",
+  "description": "Application de suivi d'avancement des travaux de câblage informatique pour un complexe hospitalier.",
+  "requestFramePermissions": []
+}
