@@ -6,10 +6,8 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
-  }
+body {
+  @apply bg-slate-50 text-slate-900 font-sans antialiased;
 }
 
 .data-grid-header {
