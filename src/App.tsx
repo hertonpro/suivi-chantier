@@ -237,24 +237,24 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen p-6 lg:p-10 max-w-[1600px] mx-auto">
+    <div className="min-h-screen p-4 md:p-6 lg:p-10 max-w-[1600px] mx-auto">
       {/* Header */}
-      <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <header className="mb-8 md:mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="group cursor-pointer" onClick={() => setIsConfigOpen(true)}>
           <div className="flex items-center gap-3">
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900 mb-1 md:mb-2">
               {appData.config.name}
             </h1>
-            <Settings size={20} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity mb-2" />
+            <Settings size={20} className="text-slate-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity mb-1 md:mb-2" />
           </div>
-          <p className="text-slate-500 font-medium">{appData.config.subtitle} • Mise à jour en temps réel</p>
+          <p className="text-sm md:text-base text-slate-500 font-medium">{appData.config.subtitle} • Mise à jour en temps réel</p>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total" value={stats.total} icon={<LayoutGrid size={18} />} color="slate" />
-          <StatCard label="Terminé" value={stats.finished} icon={<CheckCircle2 size={18} />} color="emerald" />
-          <StatCard label="En cours" value={stats.inProgress} icon={<Clock size={18} />} color="amber" />
-          <StatCard label="Non commencé" value={stats.notStarted} icon={<AlertCircle size={18} />} color="rose" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+          <StatCard label="Total" value={stats.total} icon={<LayoutGrid size={16} />} color="slate" />
+          <StatCard label="Terminé" value={stats.finished} icon={<CheckCircle2 size={16} />} color="emerald" />
+          <StatCard label="En cours" value={stats.inProgress} icon={<Clock size={16} />} color="amber" />
+          <StatCard label="Non commencé" value={stats.notStarted} icon={<AlertCircle size={16} />} color="rose" />
         </div>
       </header>
 
@@ -307,47 +307,52 @@ const App = () => {
       </div>
 
       {/* Controls */}
-      <div className="bg-white p-4 rounded-t-2xl border-x border-t border-slate-200 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="bg-white p-4 rounded-t-2xl border-x border-t border-slate-200 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
             type="text" 
-            placeholder="Rechercher une tâche ou sous-tâche..." 
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm"
+            placeholder="Rechercher une tâche..." 
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter size={16} className="text-slate-400" />
-          <select 
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value as any)}
-          >
-            <option value="Tous">Toutes Priorités</option>
-            <option value="Haute">Haute</option>
-            <option value="Moyenne">Moyenne</option>
-            <option value="Basse">Basse</option>
-          </select>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+          <div className="flex items-center gap-2 shrink-0">
+            <Filter size={16} className="text-slate-400" />
+            <select 
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value as any)}
+            >
+              <option value="Tous">Priorités</option>
+              <option value="Haute">Haute</option>
+              <option value="Moyenne">Moyenne</option>
+              <option value="Basse">Basse</option>
+            </select>
+          </div>
 
-          <select 
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-          >
-            <option value="Tous">Tous Statuts</option>
-            <option value="Terminé">Terminé</option>
-            <option value="En cours">En cours</option>
-            <option value="Non commencé">Non commencé</option>
-          </select>
+          <div className="flex items-center gap-2 shrink-0">
+            <select 
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+            >
+              <option value="Tous">Statuts</option>
+              <option value="Terminé">Terminé</option>
+              <option value="En cours">En cours</option>
+              <option value="Non commencé">Non commencé</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Main Content Area */}
       <div className="bg-white rounded-b-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50">
@@ -355,7 +360,7 @@ const App = () => {
                 <th className="data-grid-header">Sous-tâche</th>
                 <th className="data-grid-header">Priorité</th>
                 {appData.config.steps.map(step => (
-                  <th key={step.id} className="data-grid-header text-center">{step.label}</th>
+                  <th key={step.id} className="data-grid-header text-center whitespace-nowrap">{step.label}</th>
                 ))}
                 <th className="data-grid-header">%</th>
                 <th className="data-grid-header">Statut</th>
@@ -448,26 +453,115 @@ const App = () => {
               </AnimatePresence>
             </tbody>
           </table>
-          {filteredData.length === 0 && (
-            <div className="py-20 text-center text-slate-400">
-              <Search size={48} className="mx-auto mb-4 opacity-20" />
-              <p>Aucune tâche trouvée pour ces critères.</p>
-            </div>
-          )}
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          <AnimatePresence mode="popLayout">
+            {filteredData.map((item) => {
+              const progress = calculateProgress(item.tasks, appData.config.steps);
+              const status = getStatus(progress);
+              
+              return (
+                <motion.div 
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="p-4 space-y-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-slate-900">{item.name}</h4>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                        <span className="text-xs text-slate-500">{item.service || '-'}</span>
+                        <span className="text-[10px] text-slate-300 font-mono uppercase tracking-wider">{item.level}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <button onClick={() => updatePriority(item.id)}>
+                        <PriorityBadge priority={item.priority} />
+                      </button>
+                      <StatusBadge status={status} />
+                    </div>
+                  </div>
+
+                  {/* Mobile Steps Grid */}
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {appData.config.steps.map(step => {
+                      const stepStatus = item.tasks[step.id] || { completed: false };
+                      return (
+                        <div key={step.id} className="flex flex-col items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate w-full text-center">
+                            {step.label}
+                          </span>
+                          {stepStatus.disabled ? (
+                            <div className="w-8 h-8 flex items-center justify-center text-slate-200 bg-slate-50 rounded-lg">
+                              <EyeOff size={14} />
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => toggleTaskStep(item.id, step.id)}
+                              className={cn(
+                                "w-8 h-8 rounded-lg border-2 transition-all flex items-center justify-center",
+                                stepStatus.completed 
+                                  ? "bg-emerald-500 border-emerald-500 text-white shadow-sm" 
+                                  : "bg-white border-slate-200"
+                              )}
+                            >
+                              {stepStatus.completed && <CheckCircle2 size={16} strokeWidth={3} />}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-emerald-500 transition-all duration-500" 
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold font-mono text-slate-400">{Math.round(progress)}%</span>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setEditingBuildingId(item.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                    >
+                      <MessageSquare size={14} />
+                      {item.observations.length > 0 ? `${item.observations.length} notes` : 'Observations'}
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+
+        {filteredData.length === 0 && (
+          <div className="py-20 text-center text-slate-400">
+            <Search size={48} className="mx-auto mb-4 opacity-20" />
+            <p className="text-sm">Aucune tâche trouvée pour ces critères.</p>
+          </div>
+        )}
       </div>
 
       {/* Modal for Observations */}
       <AnimatePresence>
         {editingBuilding && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-slate-900/40 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
+              className="bg-white rounded-none md:rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-full md:h-auto md:max-h-[80vh]"
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">{editingBuilding.name}</h3>
                   <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">{editingBuilding.service} • {editingBuilding.level}</p>
@@ -480,7 +574,7 @@ const App = () => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
                 {/* Steps Configuration for this task */}
                 <section>
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Configuration des Étapes</h4>
@@ -623,14 +717,14 @@ const App = () => {
       {/* Project Config Modal */}
       <AnimatePresence>
         {isConfigOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-slate-900/40 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]"
+              className="bg-white rounded-none md:rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-full md:h-auto md:max-h-[80vh]"
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="p-4 md:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <h3 className="text-lg font-bold text-slate-900">Configuration du Projet</h3>
                 <button 
                   onClick={() => setIsConfigOpen(false)}
@@ -640,7 +734,7 @@ const App = () => {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nom du Projet</label>
