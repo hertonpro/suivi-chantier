@@ -1,25 +1,29 @@
-# Use Node.js 20 as the base image
-FROM node:20-slim
+# Use the full Node.js 20 image (Debian based)
+FROM node:20
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy package files and install all dependencies
-# (Removing better-sqlite3 from package.json already fixed the build error)
-COPY package*.json ./
-RUN npm install
+# Copy package.json first
+COPY package.json ./
 
-# Copy the rest of the application code
+# Remove package-lock.json if it was copied and install dependencies
+# This forces npm to resolve the correct native bindings for @tailwindcss/oxide
+# specifically for the Linux environment inside the container.
+RUN rm -f package-lock.json && npm install
+
+# Copy the rest of the application
 COPY . .
 
-# Build the frontend static files
+# Build the frontend
 RUN npm run build
 
-# Expose the port the app runs on
+# Expose the port
 EXPOSE 3000
 
 # Set production environment
 ENV NODE_ENV=production
 
 # Start the application
+# We use npm start which now calls tsx server.ts
 CMD ["npm", "start"]
