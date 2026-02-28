@@ -8,8 +8,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATA_FILE = path.join(__dirname, "data.json");
+const TEMPLATE_FILE = path.join(__dirname, "data.template.json");
+
+async function ensureDataFile() {
+  try {
+    await fs.access(DATA_FILE);
+  } catch {
+    try {
+      const template = await fs.readFile(TEMPLATE_FILE, "utf-8");
+      await fs.writeFile(DATA_FILE, template, "utf-8");
+      console.log("Initialized data.json from template.");
+    } catch (err) {
+      console.error("Failed to initialize data.json:", err);
+      // Fallback to minimal data if template is also missing
+      const minimalData = { config: { name: "Suivi de Chantier", subtitle: "", steps: [] }, tasks: [] };
+      await fs.writeFile(DATA_FILE, JSON.stringify(minimalData), "utf-8");
+    }
+  }
+}
 
 async function startServer() {
+  await ensureDataFile();
   const app = express();
   const PORT = 3000;
 

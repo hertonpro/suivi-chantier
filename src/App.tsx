@@ -21,7 +21,8 @@ import {
   Settings,
   Edit2,
   EyeOff,
-  Eye
+  Eye,
+  Download
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -170,6 +171,49 @@ const App = () => {
     saveAllData(newData);
   };
 
+  const exportReport = () => {
+    if (!appData) return;
+
+    let report = `RAPPORT DE SUIVI DE CHANTIER - ${appData.config.name}\n`;
+    report += `Sous-titre: ${appData.config.subtitle}\n`;
+    report += `Date d'export: ${new Date().toLocaleString()}\n`;
+    report += `--------------------------------------------------\n\n`;
+
+    appData.tasks.forEach(task => {
+      const progress = calculateProgress(task.tasks, appData.config.steps);
+      const status = getStatus(progress);
+      
+      report += `TÂCHE: ${task.name}\n`;
+      report += `Service: ${task.service || '-'} | Niveau: ${task.level} | Priorité: ${task.priority}\n`;
+      report += `Progression: ${Math.round(progress)}% | Statut: ${status}\n\n`;
+      
+      if (task.observations.length > 0) {
+        report += `NOTES & OBSERVATIONS:\n`;
+        task.observations.forEach(obs => {
+          if (obs.type === 'todo') {
+            report += ` [${obs.completed ? '✓' : ' '}] ${obs.text}\n`;
+          } else {
+            report += ` - ${obs.text}\n`;
+          }
+        });
+      } else {
+        report += `Aucune observation.\n`;
+      }
+      
+      report += `\n--------------------------------------------------\n\n`;
+    });
+
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Rapport_Chantier_${appData.config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const editingBuilding = useMemo(() => 
     appData?.tasks.find(b => b.id === editingBuildingId), 
     [appData, editingBuildingId]
@@ -248,6 +292,14 @@ const App = () => {
             <Settings size={20} className="text-slate-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity mb-1 md:mb-2" />
           </div>
           <p className="text-sm md:text-base text-slate-500 font-medium">{appData.config.subtitle} • Mise à jour en temps réel</p>
+          
+          <button 
+            onClick={exportReport}
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200"
+          >
+            <Download size={18} />
+            EXPORTER LE RAPPORT
+          </button>
         </div>
         
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
