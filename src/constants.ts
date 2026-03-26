@@ -3,7 +3,7 @@ import { AppData } from './types';
 export const INITIAL_DATA: AppData = {
   config: {
     name: "Suivi de Chantier",
-    subtitle: "Hôpital Central",
+    description: "Hôpital Central",
     steps: [
       { id: "cabling", label: "Câblage" },
       { id: "sockets", label: "Prises" },
@@ -49,5 +49,6 @@ export const INITIAL_DATA: AppData = {
     { id: '34', name: 'Morgue', service: 'Morgue', level: 'RDC', priority: 'Basse', tasks: {}, observations: [] },
     { id: '35', name: 'Morgue', service: 'Morgue', level: 'R+1', priority: 'Basse', tasks: {}, observations: [] },
     { id: '36', name: 'ITM', service: 'ITM', level: 'RDC', priority: 'Basse', tasks: {}, observations: [] },
-  ]
+  ],
+  transactions: []
 };
