@@ -22,23 +22,24 @@ export default defineConfig(({ mode }) => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
           id: '/',
-          name: 'Suivi de Chantier Pro',
-          short_name: 'SuiviChantier',
-          description: 'Application professionnelle de suivi de chantier et de travaux.',
-          theme_color: '#0f172a',
+          name: 'Suivi de Chantier HGPanzi',
+          short_name: 'HGPanzi',
+          description: 'Application professionnelle de suivi de chantier et de travaux HGPanzi.',
+          theme_color: '#4f46e5',
           background_color: '#f8fafc',
           display: 'standalone',
+          orientation: 'portrait',
           scope: '/',
           start_url: '/',
           icons: [
             {
-              src: 'https://picsum.photos/192/192',
+              src: 'https://picsum.photos/seed/hgpanzi-icon-192/192/192',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any'
             },
             {
-              src: 'https://picsum.photos/512/512',
+              src: 'https://picsum.photos/seed/hgpanzi-icon-512/512/512',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable'
@@ -46,14 +47,14 @@ export default defineConfig(({ mode }) => {
           ],
           screenshots: [
             {
-              src: 'https://picsum.photos/1280/720',
+              src: 'https://picsum.photos/seed/hgpanzi-screenshot-1/1280/720',
               sizes: '1280x720',
               type: 'image/png',
               form_factor: 'wide',
               label: 'Tableau de bord de suivi'
             },
             {
-              src: 'https://picsum.photos/720/1280',
+              src: 'https://picsum.photos/seed/hgpanzi-screenshot-2/720/1280',
               sizes: '720x1280',
               type: 'image/png',
               form_factor: 'narrow',

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, Component } from 'react';
+import React, { useMemo, useState, useEffect, Component, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
@@ -27,7 +27,8 @@ import {
   TrendingUp,
   TrendingDown,
   Calendar,
-  DollarSign
+  DollarSign,
+  Smartphone
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -50,6 +51,36 @@ import { BuildingData, Priority, Status, AppData, ProjectConfig, StepDefinition,
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Custom hook for PWA installation
+const usePWA = () => {
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const install = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPrompt(null);
+      setIsInstallable(false);
+    }
+  };
+
+  return { isInstallable, install };
+};
 
 const AuthScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [isRegister, setIsRegister] = useState(false);
@@ -1050,6 +1081,8 @@ const AppContent = () => {
     return { pieData, taskProgress };
   }, [appData, stats]);
 
+  const { isInstallable, install } = usePWA();
+
   if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -1093,6 +1126,18 @@ const AppContent = () => {
             >
               <LayoutGrid size={20} />
             </button>
+            
+            {isInstallable && (
+              <button 
+                onClick={install}
+                className="p-2 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all shadow-sm flex items-center gap-2 px-3"
+                title="Installer l'application"
+              >
+                <Smartphone size={18} />
+                <span className="text-xs font-semibold hidden sm:inline">Installer</span>
+              </button>
+            )}
+
             <div 
               className="group cursor-pointer" 
               onClick={() => setIsConfigOpen(true)}
