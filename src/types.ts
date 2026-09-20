@@ -13,6 +13,7 @@ export interface Project {
   description: string;
   created_at: string;
   owner_id: string;
+  role?: 'owner' | 'editor';
 }
 
 export interface ProjectMember {

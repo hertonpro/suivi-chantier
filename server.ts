@@ -173,7 +173,11 @@ async function initDb() {
 
 // Auth Middleware
 const authenticate = (req: any, res: any, next: any) => {
-  const token = req.cookies.token;
+  let token = req.cookies?.token;
+  const authHeader = req.headers?.authorization;
+  if (!token && authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7);
+  }
   if (!token) return res.status(401).json({ error: "Unauthorized" });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -221,7 +225,7 @@ async function startServer() {
       await pool.query("INSERT INTO users (id, email, password, username) VALUES (?, ?, ?, ?)", [id, email, hashedPassword, username]);
       const token = jwt.sign({ id, email, username }, JWT_SECRET);
       res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-      res.json({ success: true, user: { id, email, username } });
+      res.json({ success: true, token, user: { id, email, username } });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
@@ -237,7 +241,29 @@ async function startServer() {
       }
       const token = jwt.sign({ id: user.id, email: user.email, username: user.username }, JWT_SECRET);
       res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
-      res.json({ user: { id: user.id, email: user.email, username: user.username } });
+      res.json({ success: true, token, user: { id: user.id, email: user.email, username: user.username } });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/auth/demo", async (req, res) => {
+    try {
+      const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", ["alvantyomihigo@gmail.com"]);
+      let user = (rows as any[])[0];
+      if (!user) {
+        const [anyUser] = await pool.query("SELECT * FROM users LIMIT 1");
+        user = (anyUser as any[])[0];
+      }
+      if (!user) {
+        const id = uuidv4();
+        const hashedPassword = await bcrypt.hash("demo1234", 10);
+        await pool.query("INSERT INTO users (id, email, password, username) VALUES (?, ?, ?, ?)", [id, "alvantyomihigo@gmail.com", hashedPassword, "Alva-ntyo"]);
+        user = { id, email: "alvantyomihigo@gmail.com", username: "Alva-ntyo" };
+      }
+      const token = jwt.sign({ id: user.id, email: user.email, username: user.username }, JWT_SECRET);
+      res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+      res.json({ success: true, token, user: { id: user.id, email: user.email, username: user.username } });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

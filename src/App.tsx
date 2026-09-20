@@ -51,6 +51,7 @@ import { twMerge } from 'tailwind-merge';
 import { BuildingData, Priority, Status, AppData, ProjectConfig, StepDefinition, TaskStepStatus, Transaction, User, Project, ProjectMember, NetworkInspectorData } from './types';
 import { NetworkInspectorTab } from './components/network/NetworkInspectorTab';
 import { createInitialNetworkData } from './data/networkInitialData';
+import { authFetch, setStoredToken, setStoredUser, getStoredUser, clearAuth } from './utils/api';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -88,7 +89,7 @@ const usePWA = () => {
 
 const AuthScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('alvantyomihigo@gmail.com');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
@@ -100,20 +101,41 @@ const AuthScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
     setLoading(true);
     try {
       const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(endpoint, {
+      const res = await authFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, username }),
+        body: JSON.stringify({ email: email.trim(), password, username: username.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Identifiants invalides');
       
+      if (data.token) {
+        setStoredToken(data.token);
+      }
       if (data.user) {
+        setStoredUser(data.user);
         onLogin(data.user);
       } else if (isRegister) {
         setIsRegister(false);
-        setError('Compte créé ! Connectez-vous.');
-      } else {
+        setError('Compte créé avec succès ! Veuillez vous connecter.');
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickDemo = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await authFetch('/api/auth/demo', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur connexion démo');
+      if (data.token) setStoredToken(data.token);
+      if (data.user) {
+        setStoredUser(data.user);
         onLogin(data.user);
       }
     } catch (err: any) {
@@ -186,7 +208,16 @@ const AuthScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3 text-center">
+          <button 
+            type="button"
+            onClick={handleQuickDemo}
+            disabled={loading}
+            className="w-full py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all shadow-sm"
+          >
+            ⚡ Accès Direct / Compte Démo (1 Clic)
+          </button>
+
           <button 
             onClick={() => setIsRegister(!isRegister)}
             className="text-sm font-bold text-indigo-600 hover:text-indigo-700"
@@ -210,10 +241,10 @@ const InviteModal = ({ project, onClose }: { project: Project, onClose: () => vo
     setLoading(true);
     setMessage('');
     try {
-      const res = await fetch(`/api/projects/${project.id}/invite`, {
+      const res = await authFetch(`/api/projects/${project.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email: email.trim(), role }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -289,20 +320,17 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
-  useEffect(() => {
+  const fetchProjects = useCallback(() => {
     setLoading(true);
-    console.log('Fetching projects from frontend...');
-    fetch('/api/projects')
+    authFetch('/api/projects')
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch projects');
+        if (!res.ok) throw new Error('Impossible de charger les projets');
         return res.json();
       })
       .then(data => {
-        console.log('Projects received in frontend:', data);
         if (Array.isArray(data)) {
           setProjects(data);
         } else {
-          console.error('Projects data is not an array:', data);
           setProjects([]);
         }
       })
@@ -313,6 +341,10 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProject.name.trim()) {
@@ -322,16 +354,26 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
     setCreating(true);
     setCreateError('');
     try {
-      const res = await fetch('/api/projects', {
+      const res = await authFetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProject),
+        body: JSON.stringify({ name: newProject.name.trim(), description: newProject.description.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.id) {
-        setProjects([...projects, { id: data.id, ...newProject, created_at: new Date().toISOString(), owner_id: user.id }]);
+        const createdProject: Project = { 
+          id: data.id, 
+          name: newProject.name.trim(), 
+          description: newProject.description.trim(), 
+          created_at: new Date().toISOString(), 
+          owner_id: user.id,
+          role: 'owner'
+        };
+        setProjects(prev => [createdProject, ...prev]);
         setShowCreate(false);
         setNewProject({ name: '', description: '' });
+        // Auto-select newly created project
+        onSelect(createdProject);
       } else {
         setCreateError(data.error || 'Erreur lors de la création du projet');
       }
@@ -852,10 +894,26 @@ const AppContent = () => {
 
   // Check for session on mount
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(res => res.json())
+    const savedUser = getStoredUser();
+    if (savedUser) setUser(savedUser);
+
+    authFetch('/api/auth/me')
+      .then(res => {
+        if (!res.ok) throw new Error('Unauthorized');
+        return res.json();
+      })
       .then(data => {
-        if (data.user) setUser(data.user);
+        if (data.user) {
+          setUser(data.user);
+          setStoredUser(data.user);
+        } else {
+          clearAuth();
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        clearAuth();
+        setUser(null);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -870,7 +928,7 @@ const AppContent = () => {
 
     setLoading(true);
     console.log('Fetching data for project:', selectedProject.id);
-    fetch(`/api/projects/${selectedProject.id}/data`)
+    authFetch(`/api/projects/${selectedProject.id}/data`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch project data');
         return res.json();
@@ -886,7 +944,7 @@ const AppContent = () => {
       .finally(() => setLoading(false));
 
     // Load network inspector data
-    fetch(`/api/projects/${selectedProject.id}/network`)
+    authFetch(`/api/projects/${selectedProject.id}/network`)
       .then(res => res.ok ? res.json() : null)
       .then(netData => {
         if (netData && netData.outlets) {
@@ -902,7 +960,7 @@ const AppContent = () => {
           }
           const initial = createInitialNetworkData(selectedProject.id, selectedProject.name);
           setNetworkData(initial);
-          fetch(`/api/projects/${selectedProject.id}/network`, {
+          authFetch(`/api/projects/${selectedProject.id}/network`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(initial),
@@ -920,7 +978,7 @@ const AppContent = () => {
     setNetworkData(newData);
     if (selectedProject) {
       localStorage.setItem(`network_data_${selectedProject.id}`, JSON.stringify(newData));
-      fetch(`/api/projects/${selectedProject.id}/network`, {
+      authFetch(`/api/projects/${selectedProject.id}/network`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newData),
@@ -932,7 +990,7 @@ const AppContent = () => {
   const saveAllData = async (newData: AppData) => {
     if (!selectedProject) return;
     try {
-      await fetch(`/api/projects/${selectedProject.id}/data`, {
+      await authFetch(`/api/projects/${selectedProject.id}/data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newData),
@@ -945,7 +1003,7 @@ const AppContent = () => {
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
     if (!appData || !selectedProject) return;
     try {
-      const res = await fetch(`/api/projects/${selectedProject.id}/transactions`, {
+      const res = await authFetch(`/api/projects/${selectedProject.id}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(transaction),
@@ -964,7 +1022,7 @@ const AppContent = () => {
   const deleteTransaction = async (id: string) => {
     if (!appData || !selectedProject) return;
     try {
-      await fetch(`/api/projects/${selectedProject.id}/transactions/${id}`, { method: 'DELETE' });
+      await authFetch(`/api/projects/${selectedProject.id}/transactions/${id}`, { method: 'DELETE' });
       const newData = { ...appData, transactions: appData.transactions.filter(t => t.id !== id) };
       setAppData(newData);
     } catch (err) {
@@ -973,7 +1031,10 @@ const AppContent = () => {
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    try {
+      await authFetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
+    clearAuth();
     setUser(null);
     setSelectedProject(null);
   };
