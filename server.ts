@@ -128,6 +128,44 @@ async function initDb() {
       );
     `);
 
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS project_network_data (
+        project_id VARCHAR(50) PRIMARY KEY,
+        data LONGTEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Ensure composite primary keys are set properly
+    try {
+      const [stepKeys] = await connection.query("SHOW KEYS FROM steps WHERE Key_name = 'PRIMARY'");
+      const stepCols = (stepKeys as any[]).map(k => k.Column_name);
+      if (!stepCols.includes('project_id')) {
+        await connection.query("ALTER TABLE steps MODIFY project_id VARCHAR(50) NOT NULL");
+        await connection.query("ALTER TABLE steps DROP PRIMARY KEY");
+        await connection.query("ALTER TABLE steps ADD PRIMARY KEY (id, project_id)");
+      }
+
+      const [taskKeys] = await connection.query("SHOW KEYS FROM tasks WHERE Key_name = 'PRIMARY'");
+      const taskCols = (taskKeys as any[]).map(k => k.Column_name);
+      if (!taskCols.includes('project_id')) {
+        await connection.query("ALTER TABLE tasks MODIFY project_id VARCHAR(50) NOT NULL");
+        await connection.query("ALTER TABLE tasks DROP PRIMARY KEY");
+        await connection.query("ALTER TABLE tasks ADD PRIMARY KEY (id, project_id)");
+      }
+
+      const [tsKeys] = await connection.query("SHOW KEYS FROM task_steps WHERE Key_name = 'PRIMARY'");
+      const tsCols = (tsKeys as any[]).map(k => k.Column_name);
+      if (!tsCols.includes('project_id')) {
+        await connection.query("ALTER TABLE task_steps MODIFY project_id VARCHAR(50) NOT NULL");
+        await connection.query("ALTER TABLE task_steps DROP PRIMARY KEY");
+        await connection.query("ALTER TABLE task_steps ADD PRIMARY KEY (task_id, step_id, project_id)");
+      }
+    } catch (migErr: any) {
+      console.log("Migration notice:", migErr.message);
+    }
+
   } finally {
     connection.release();
   }
@@ -147,13 +185,32 @@ const authenticate = (req: any, res: any, next: any) => {
 };
 
 async function startServer() {
-  await initDb();
+  console.log("Starting server...");
+  
+  try {
+    await initDb();
+    console.log("Database connected and initialized.");
+  } catch (err: any) {
+    console.error("CRITICAL: Database initialization failed!");
+    console.error(err.message);
+    // We continue anyway so the server can start and we can debug via UI/logs
+  }
   
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
   app.use(cookieParser());
+
+  // Health check
+  app.get("/api/health", async (req, res) => {
+    try {
+      const [rows] = await pool.query("SELECT 1 as connected");
+      res.json({ status: "ok", database: "connected", result: rows });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", database: "disconnected", error: err.message });
+    }
+  });
 
   // --- Auth Routes ---
   app.post("/api/auth/register", async (req, res) => {
@@ -162,7 +219,9 @@ async function startServer() {
       const hashedPassword = await bcrypt.hash(password, 10);
       const id = uuidv4();
       await pool.query("INSERT INTO users (id, email, password, username) VALUES (?, ?, ?, ?)", [id, email, hashedPassword, username]);
-      res.json({ success: true });
+      const token = jwt.sign({ id, email, username }, JWT_SECRET);
+      res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "none" });
+      res.json({ success: true, user: { id, email, username } });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
     }
@@ -354,6 +413,34 @@ async function startServer() {
   app.delete("/api/projects/:projectId/transactions/:id", authenticate, async (req: any, res) => {
     try {
       await pool.query("DELETE FROM transactions WHERE id = ? AND project_id = ?", [req.params.id, req.params.projectId]);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/network", authenticate, async (req: any, res) => {
+    try {
+      const { projectId } = req.params;
+      const [rows] = await pool.query("SELECT data FROM project_network_data WHERE project_id = ?", [projectId]);
+      if ((rows as any[]).length > 0) {
+        const raw = (rows as any[])[0].data;
+        return res.json(typeof raw === 'string' ? JSON.parse(raw) : raw);
+      }
+      res.json(null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/network", authenticate, async (req: any, res) => {
+    try {
+      const { projectId } = req.params;
+      const dataStr = JSON.stringify(req.body);
+      await pool.query(
+        "INSERT INTO project_network_data (project_id, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)",
+        [projectId, dataStr]
+      );
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

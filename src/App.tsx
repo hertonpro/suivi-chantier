@@ -28,7 +28,9 @@ import {
   TrendingDown,
   Calendar,
   DollarSign,
-  Smartphone
+  Smartphone,
+  Cable,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -46,7 +48,9 @@ import {
 } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { BuildingData, Priority, Status, AppData, ProjectConfig, StepDefinition, TaskStepStatus, Transaction, User, Project, ProjectMember } from './types';
+import { BuildingData, Priority, Status, AppData, ProjectConfig, StepDefinition, TaskStepStatus, Transaction, User, Project, ProjectMember, NetworkInspectorData } from './types';
+import { NetworkInspectorTab } from './components/network/NetworkInspectorTab';
+import { createInitialNetworkData } from './data/networkInitialData';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -104,7 +108,9 @@ const AuthScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      if (isRegister) {
+      if (data.user) {
+        onLogin(data.user);
+      } else if (isRegister) {
         setIsRegister(false);
         setError('Compte créé ! Connectez-vous.');
       } else {
@@ -280,6 +286,8 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
   const [showCreate, setShowCreate] = useState(false);
   const [invitingProject, setInvitingProject] = useState<Project | null>(null);
   const [newProject, setNewProject] = useState({ name: '', description: '' });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -307,6 +315,12 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newProject.name.trim()) {
+      setCreateError('Veuillez entrer un nom de projet');
+      return;
+    }
+    setCreating(true);
+    setCreateError('');
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
@@ -314,13 +328,18 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
         body: JSON.stringify(newProject),
       });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.id) {
         setProjects([...projects, { id: data.id, ...newProject, created_at: new Date().toISOString(), owner_id: user.id }]);
         setShowCreate(false);
         setNewProject({ name: '', description: '' });
+      } else {
+        setCreateError(data.error || 'Erreur lors de la création du projet');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error in handleCreate:', err);
+      setCreateError(err.message || 'Erreur de connexion au serveur');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -343,7 +362,7 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
           </div>
           <div className="flex gap-3">
             <button 
-              onClick={() => setShowCreate(true)}
+              onClick={() => { setCreateError(''); setShowCreate(true); }}
               className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
             >
               <Plus size={20} /> NOUVEAU PROJET
@@ -365,8 +384,8 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aucun projet trouvé</h3>
             <p className="text-slate-500 mb-8">Commencez par créer votre premier projet de suivi de chantier.</p>
             <button 
-              onClick={() => setShowCreate(true)}
-              className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all"
+              onClick={() => { setCreateError(''); setShowCreate(true); }}
+              className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
             >
               CRÉER UN PROJET
             </button>
@@ -412,10 +431,18 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md"
               >
-                <h2 className="text-2xl font-bold text-slate-900 mb-6">Nouveau Projet</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-slate-900">Nouveau Projet</h2>
+                  <button 
+                    onClick={() => { setShowCreate(false); setCreateError(''); }}
+                    className="text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
                 <form onSubmit={handleCreate} className="space-y-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nom du Projet</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nom du Projet *</label>
                     <input 
                       type="text" 
                       required
@@ -434,19 +461,34 @@ const ProjectDashboard = ({ user, onSelect, onLogout }: { user: User, onSelect: 
                       placeholder="Ex: Construction d'un immeuble R+5 à Paris..."
                     />
                   </div>
+
+                  {createError && (
+                    <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl text-xs font-medium text-rose-600 text-center">
+                      {createError}
+                    </div>
+                  )}
+
                   <div className="flex gap-3 pt-4">
                     <button 
                       type="button"
-                      onClick={() => setShowCreate(false)}
+                      onClick={() => { setShowCreate(false); setCreateError(''); }}
                       className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
                     >
                       ANNULER
                     </button>
                     <button 
                       type="submit"
-                      className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                      disabled={creating || !newProject.name.trim()}
+                      className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      CRÉER
+                      {creating ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>CRÉATION...</span>
+                        </>
+                      ) : (
+                        'CRÉER'
+                      )}
                     </button>
                   </div>
                 </form>
@@ -804,7 +846,8 @@ const AppContent = () => {
   const [statusFilter, setStatusFilter] = useState<Status | 'Tous'>('Tous');
   const [editingBuildingId, setEditingBuildingId] = useState<string | null>(null);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tasks' | 'budget'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'budget' | 'network'>('tasks');
+  const [networkData, setNetworkData] = useState<NetworkInspectorData | null>(null);
   const devis = 'USD'
 
   // Check for session on mount
@@ -821,6 +864,7 @@ const AppContent = () => {
   useEffect(() => {
     if (!selectedProject) {
       setAppData(null);
+      setNetworkData(null);
       return;
     }
 
@@ -840,7 +884,49 @@ const AppContent = () => {
         setAppData(null);
       })
       .finally(() => setLoading(false));
+
+    // Load network inspector data
+    fetch(`/api/projects/${selectedProject.id}/network`)
+      .then(res => res.ok ? res.json() : null)
+      .then(netData => {
+        if (netData && netData.outlets) {
+          setNetworkData(netData);
+        } else {
+          // Check local cache fallback
+          const cached = localStorage.getItem(`network_data_${selectedProject.id}`);
+          if (cached) {
+            try {
+              setNetworkData(JSON.parse(cached));
+              return;
+            } catch (e) {}
+          }
+          const initial = createInitialNetworkData(selectedProject.id, selectedProject.name);
+          setNetworkData(initial);
+          fetch(`/api/projects/${selectedProject.id}/network`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(initial),
+          }).catch(console.error);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching network data:', err);
+        const initial = createInitialNetworkData(selectedProject.id, selectedProject.name);
+        setNetworkData(initial);
+      });
   }, [selectedProject]);
+
+  const handleUpdateNetworkData = (newData: NetworkInspectorData) => {
+    setNetworkData(newData);
+    if (selectedProject) {
+      localStorage.setItem(`network_data_${selectedProject.id}`, JSON.stringify(newData));
+      fetch(`/api/projects/${selectedProject.id}/network`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newData),
+      }).catch(err => console.error('Failed to sync network data:', err));
+    }
+  };
 
   // Save data to API
   const saveAllData = async (newData: AppData) => {
@@ -1152,39 +1238,68 @@ const AppContent = () => {
             </div>
           </div>
           
-          <div className="flex gap-2 mt-4">
+          <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-1 max-w-full no-scrollbar">
+            {activeTab === 'tasks' && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportReport();
+                }}
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200 shrink-0 whitespace-nowrap"
+              >
+                <Download size={16} />
+                <span>EXPORTER</span>
+              </button>
+            )}
             <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                exportReport();
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200"
+              onClick={() => setActiveTab('tasks')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm shrink-0 whitespace-nowrap",
+                activeTab === 'tasks' ? "bg-slate-900 text-white shadow-slate-200" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              )}
             >
-              <Download size={18} />
-              EXPORTER
+              <LayoutGrid size={16} />
+              <span>SUIVI CHANTIER</span>
             </button>
             <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveTab(activeTab === 'tasks' ? 'budget' : 'tasks');
-              }}
+              onClick={() => setActiveTab('budget')}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm",
+                "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm shrink-0 whitespace-nowrap",
                 activeTab === 'budget' ? "bg-indigo-600 text-white shadow-indigo-200" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               )}
             >
-              {activeTab === 'tasks' ? <Wallet size={18} /> : <LayoutGrid size={18} />}
-              {activeTab === 'tasks' ? 'GESTION BUDGET' : 'SUIVI CHANTIER'}
+              <Wallet size={16} />
+              <span>GESTION BUDGET</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('network')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm shrink-0 whitespace-nowrap",
+                activeTab === 'network' ? "bg-indigo-700 text-white shadow-indigo-300" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              <Cable size={16} />
+              <span className="hidden sm:inline">CONTRÔLE RÉSEAU (NOTE DE CADRAGE)</span>
+              <span className="sm:hidden">RECETTE RÉSEAU</span>
+              {networkData && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  activeTab === 'network' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700'
+                }`}>
+                  {networkData.outlets.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-          <StatCard label="Total" value={stats.total} icon={<LayoutGrid size={16} />} color="slate" />
-          <StatCard label="Terminé" value={stats.finished} icon={<CheckCircle2 size={16} />} color="emerald" />
-          <StatCard label="En cours" value={stats.inProgress} icon={<Clock size={16} />} color="amber" />
-          <StatCard label="Non commencé" value={stats.notStarted} icon={<AlertCircle size={16} />} color="rose" />
-        </div>
+        {activeTab === 'tasks' && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+            <StatCard label="Total" value={stats.total} icon={<LayoutGrid size={16} />} color="slate" />
+            <StatCard label="Terminé" value={stats.finished} icon={<CheckCircle2 size={16} />} color="emerald" />
+            <StatCard label="En cours" value={stats.inProgress} icon={<Clock size={16} />} color="amber" />
+            <StatCard label="Non commencé" value={stats.notStarted} icon={<AlertCircle size={16} />} color="rose" />
+          </div>
+        )}
       </header>
 
       {activeTab === 'tasks' ? (
@@ -1482,12 +1597,24 @@ const AppContent = () => {
             )}
           </div>
         </>
-      ) : (
+      ) : activeTab === 'budget' ? (
         <BudgetView 
           transactions={appData.transactions} 
           onAdd={addTransaction} 
           onDelete={deleteTransaction} 
         />
+      ) : networkData ? (
+        <NetworkInspectorTab 
+          projectId={selectedProject.id}
+          projectName={selectedProject.name}
+          data={networkData}
+          onUpdateData={handleUpdateNetworkData}
+        />
+      ) : (
+        <div className="py-20 text-center text-slate-400">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm font-medium">Chargement des données de contrôle réseau...</p>
+        </div>
       )}
 
       {/* Modal for Observations */}
